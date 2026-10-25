@@ -296,12 +296,18 @@ function renderKpis(kpiEl) {
   const rankEntry = rank
     ? translate('ranks', rank.badge ?? { tier: rank.rank, subrank: rank.subrank })
     : null;
+  // The exact rating number behind the badge: the flat progress the player's
+  // most recent ranked match left off at.
+  const elo = rank?.last_match?.player_rank_final_flat_progress;
 
   kpiEl.replaceChildren(
     kpiCell('Rank', rankEntry
       ? h('span', { class: 'kpi-rank' },
           rankEntry.badge ? h('img', { src: rankEntry.badge, alt: '', class: 'kpi-badge' }) : null,
-          h('span', { class: 'kpi-rank-name gold' }, rankEntry.name),
+          h('span', { class: 'kpi-rank-text' },
+            h('span', { class: 'kpi-rank-name gold' }, rankEntry.name),
+            elo != null ? h('span', { class: 'kpi-elo num' }, `ELO ${fmt.int(elo)}`) : null,
+          ),
         )
       : h('span', { class: 'muted' }, '\u2014')),
     kpiCell('Matches · 30 days', h('span', { class: 'num kpi-num' }, profile ? fmt.int(profile.matches_played_last_30d ?? 0) : '\u2014')),
@@ -384,7 +390,9 @@ function renderHeroes(listEl, footEl, state) {
             ),
           ),
           h('div', { class: 'hero-row-bar' },
-            h('span', { class: 'hero-bar', style: `width:${((wr ?? 0) / maxWinrate) * 88}%` }),
+            h('span', { class: 'hero-bar-track' },
+              h('span', { class: 'hero-bar', style: `width:${((wr ?? 0) / maxWinrate) * 100}%` }),
+            ),
             h('span', { class: 'num hero-bar-val' }, wr == null ? '\u2014' : fmt.pct(wr)),
           ),
         );

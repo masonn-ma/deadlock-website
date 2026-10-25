@@ -617,6 +617,20 @@ img { display: block; }
 
 .kpi-badge { height: 40px; width: auto; flex: none; }
 
+.kpi-rank-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.kpi-elo {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .kpi-rank-name {
   font-family: var(--font-display);
   font-weight: 600;
@@ -684,12 +698,15 @@ img { display: block; }
 
 .hero-row {
   flex: 1;
-  min-height: 58px;
+  min-height: 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 7px;
 }
+
+/* hairline separators: rows read as records, not one merged block */
+.hero-row + .hero-row { border-top: 1px solid var(--rule); }
 
 .hero-row-top {
   display: flex;
@@ -736,6 +753,14 @@ img { display: block; }
   padding-left: 34px;
 }
 
+/* the fill scales inside a flexing track; the value keeps a fixed column so
+   even 100.0% stays inside the panel padding */
+.hero-bar-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
 .hero-bar {
   height: 10px;
   border-radius: 999px;
@@ -744,6 +769,7 @@ img { display: block; }
 }
 
 .hero-bar-val {
+  flex: none;
   color: var(--text);
   font-size: 12px;
   white-space: nowrap;
@@ -751,7 +777,12 @@ img { display: block; }
 
 /* ---------- match history table ---------- */
 
-.mtable { padding: 0 20px 8px; }
+.mtable {
+  padding: 0 20px 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 .mrow {
   display: grid;
@@ -769,10 +800,13 @@ img { display: block; }
   border-bottom: 1px solid var(--line);
 }
 
-.mlist { list-style: none; margin: 0; padding: 0; }
+.mlist { list-style: none; margin: 0; padding: 0; flex: 1; display: flex; flex-direction: column; }
 
+/* rows share the card's height with the neighbouring panel, so the two cards
+   stay flush and no blank band opens inside either one */
 .mlist .mrow {
   border-bottom: 1px solid var(--rule);
+  flex: 1;
 }
 
 .mlist .mrow:last-child { border-bottom: none; }

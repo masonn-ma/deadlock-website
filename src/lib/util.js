@@ -63,6 +63,24 @@ export function debounce(fn, ms = 250) {
 }
 
 /**
+ * Steam's default avatar host is unreachable on some networks, but Steam
+ * serves the same assets on its Akamai edge, so every candidate URL is
+ * expanded with a mirrored twin before the chain steps through them.
+ */
+function avatarCandidates(srcs) {
+  const out = [];
+  for (const raw of srcs) {
+    if (!raw) continue;
+    const u = raw.replace(/^http:\/\//i, 'https://');
+    out.push(u);
+    if (u.includes('avatars.steamstatic.com')) {
+      out.push(u.replace('avatars.steamstatic.com', 'avatars.akamai.steamstatic.com'));
+    }
+  }
+  return out;
+}
+
+/**
  * An avatar that steps through Steam's avatar sizes and, if every URL fails,
  * degrades to an initial-letter placeholder — a broken-image icon never ships.
  * @param {Array<string>} srcs - ordered candidates, best first
@@ -71,7 +89,7 @@ export function debounce(fn, ms = 250) {
  * @param {string} [alt]
  */
 export function avatarImg(srcs, className, initial, alt = '') {
-  const list = srcs.filter(Boolean);
+  const list = avatarCandidates(srcs);
   const placeholder = () =>
     h('span', { class: `${className} avatar-ph` }, (initial || '?').trim().charAt(0).toUpperCase() || '?');
   if (!list.length) return placeholder();
