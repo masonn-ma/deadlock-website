@@ -308,7 +308,9 @@ img { display: block; }
   color: var(--faint);
 }
 
-.try-chip {
+/* Chip: the one small pill used for try-examples, mode filters and sorting.
+   The active state is raised + brighter (the tab pattern), never coloured. */
+.chip {
   height: 26px;
   padding: 0 10px;
   border-radius: 999px;
@@ -320,7 +322,13 @@ img { display: block; }
   cursor: pointer;
 }
 
-.try-chip:hover { color: var(--text); border-color: var(--control); background: var(--raised); }
+.chip:hover { color: var(--text); border-color: var(--control); background: var(--raised); }
+
+.chip.active {
+  background: var(--raised);
+  border-color: var(--control);
+  color: var(--text);
+}
 
 .search { position: relative; }
 
@@ -775,6 +783,100 @@ img { display: block; }
   white-space: nowrap;
 }
 
+/* ---------- heroes page (#/heroes/{id}) ---------- */
+
+/* the head card reuses .player-head; the data card is one full-width panel */
+
+.hp-search {
+  flex: none;
+  width: 220px;
+  height: 34px;
+  font-size: 13px;
+  padding: 0 12px;
+}
+
+.hp-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hp-chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hp-row-label {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--faint);
+  margin-right: 2px;
+}
+
+/* column labels; rows share the same grid so columns line up */
+.hp-hhead {
+  min-height: 34px;
+  color: var(--faint);
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 20px;
+}
+
+.hp-hhead .hp-wr { justify-content: flex-end; }
+.hp-hhead .hp-kda { font-size: 12px; font-weight: 400; }
+.hp-hhead .hp-last { font-size: 12px; }
+
+.hp-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 20px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* single-line record row: identity | win rate | avg K/D/A | last played */
+.hp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 132px 64px;
+  column-gap: 16px;
+  align-items: center;
+  min-height: 56px;
+}
+
+.hp-row + .hp-row { border-top: 1px solid var(--rule); }
+
+.hp-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hp-wr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hp-kda {
+  text-align: right;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.hp-last {
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* ---------- match history table ---------- */
 
 .mtable {
@@ -816,14 +918,6 @@ img { display: block; }
   align-items: center;
   gap: 10px;
   min-width: 0;
-  color: var(--text);
-  text-decoration: none;
-}
-
-.m-hero:hover .m-hero-name {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .m-hero-name {
@@ -1030,6 +1124,26 @@ dialog.settings::backdrop { background: rgba(8, 6, 4, 0.6); }
   .m-detail > span { justify-self: auto; text-align: left; font-size: 12px; }
   .m-when { margin-left: auto; }
 
+  /* heroes page rows reflow to stacked lines; labels row drops out
+     (element carries both classes, so the hide needs the pair) */
+  .hp-row.hp-hhead { display: none; }
+
+  .hp-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    min-height: 64px;
+    padding: 10px 0;
+  }
+
+  .hp-main { flex: 1 1 100%; }
+  .hp-wr { width: 100%; }
+  .hp-kda { margin-right: auto; text-align: left; }
+
+  .panel-head { flex-wrap: wrap; }
+  .hp-search { flex: 1 1 100%; width: auto; }
+
   .player { padding: 20px 16px 48px; }
   .player-name { font-size: 22px; }
   .landing { padding-top: 64px; }
@@ -1050,6 +1164,7 @@ dialog.settings::backdrop { background: rgba(8, 6, 4, 0.6); }
   .btn,
   .icon-btn,
   .chip-btn,
+  .chip,
   .recent-chip,
   .pop-row,
   .text-link,

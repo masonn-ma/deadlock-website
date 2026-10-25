@@ -1,8 +1,9 @@
 /**
  * App entry point and hash router.
  *
- *   #/                    → home (search)
- *   #/player/{account_id} → player profile
+ *   #/                      → home (search)
+ *   #/player/{account_id}   → player profile
+ *   #/heroes/{account_id}   → per-player heroes page (filters + sorting)
  *
  * Player links are shareable and survive refreshes; the dictionary registry is
  * loaded once at boot (baked files first, then a live refresh).
@@ -12,6 +13,7 @@ import { register, ready as dictsReady } from './lib/dictionaries/registry.js';
 import { heroes } from './lib/dictionaries/heroes.js';
 import { ranks } from './lib/dictionaries/ranks.js';
 import { renderPlayer } from './playerView.js';
+import { renderHeroesPage } from './heroesView.js';
 import { attachSearchBox } from './searchBox.js';
 import { initSettings, getSteamKey } from './settings.js';
 import { h, avatarImg } from './lib/util.js';
@@ -51,7 +53,7 @@ function renderHome() {
         h('div', { class: 'try-row' },
           h('span', { class: 'try-label' }, 'Try:'),
           ...['gabe', '76561197960287930', 'steamcommunity.com/id/GabeLoganNewell'].map((example) =>
-            h('button', { class: 'try-chip', type: 'button', title: `Fill the search with ${example}` }, example)
+            h('button', { class: 'chip', type: 'button', title: `Fill the search with ${example}` }, example)
           ),
         ),
         h('ul', { class: 'search-pop', hidden: true }),
@@ -62,7 +64,7 @@ function renderHome() {
   );
 
   attachSearchBox(document.getElementById('hero-search'));
-  document.querySelectorAll('.try-chip').forEach((chip) => {
+  document.querySelectorAll('.try-row .chip').forEach((chip) => {
     chip.addEventListener('click', () => {
       const input = document.getElementById('hero-search-input');
       if (input) {
@@ -142,14 +144,19 @@ function renderRecents(el) {
 
 function route() {
   window.scrollTo(0, 0);
-  const match = location.hash.match(/^#\/player\/(\d{1,10})$/);
-  if (match) {
+  const playerMatch = location.hash.match(/^#\/player\/(\d{1,10})$/);
+  const heroesMatch = location.hash.match(/^#\/heroes\/(\d{1,10})$/);
+  if (playerMatch || heroesMatch) {
     if (topbarSearch) {
       topbarSearch.hidden = false;
       const input = topbarSearch.querySelector('input');
       if (input && document.activeElement !== input) input.value = '';
     }
-    renderPlayer(view, match[1], { dictsReady: dictionaries, saveRecent });
+  }
+  if (playerMatch) {
+    renderPlayer(view, playerMatch[1], { dictsReady: dictionaries, saveRecent });
+  } else if (heroesMatch) {
+    renderHeroesPage(view, heroesMatch[1], { dictsReady: dictionaries, saveRecent });
   } else {
     renderHome();
   }

@@ -62,6 +62,12 @@ export function kda(kills, deaths, assists) {
   return `${kills} / ${deaths} / ${assists}`;
 }
 
+/** 3.7 — a per-game average with one decimal; null-safe. */
+export function avg1(numerator, games) {
+  if (!games || numerator == null) return '\u2014';
+  return (numerator / games).toFixed(1);
+}
+
 /** "just now" → "3 h ago" → "2 d ago" → "12 Oct" → "12 Oct 2025". */
 export function timeAgo(unixSeconds, now = Date.now()) {
   if (!unixSeconds) return '\u2014';

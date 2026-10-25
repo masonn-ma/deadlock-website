@@ -2,7 +2,9 @@
 
 A static, dependency-free website for looking up **Deadlock** players by Steam ID,
 profile URL or display name. Enter `#/player/{account_id}` URLs, search from the
-landing page, and read a player's rank, hero records and recent matches.
+landing page, and read a player's rank, hero records and recent matches. Each
+profile links to a dedicated `#/heroes/{account_id}` page with the complete
+per-hero record, searchable and filterable by game mode.
 
 **Live data** comes straight from the [Deadlock Community API](https://deadlock-api.com)
 (CORS-open, no key required), so the site is pure static files and can be hosted
@@ -15,9 +17,14 @@ free on **GitHub Pages**. Personal project - not affiliated with Valve.
   display name (community search with live suggestions).
 - **Full profile**: Steam identity, rank badge + tier, 30-day match count,
   lifetime win rate, heroes played.
-- **Hero records**: sorted bar list of every hero played (games + win rate).
-- **Match history**: result pills, K/D/A, souls (net worth), duration, ranked
-  rating delta, with links out to Tracklock for full detail.
+- **Hero records**: top 10 most played heroes (games + win rate), linking to
+  the full per-hero page.
+- **Heroes page**: every hero played, aggregated client-side from the full
+  match history — filter by game mode (Ranked, Unranked, Street Brawl, …),
+  sort by games / win rate / name, search by hero name, per-hero average
+  K/D/A and last-played times.
+- **Match history**: result pills, K/D/A, souls (net worth), duration and
+  ranked rating delta.
 - **Recents**: the last eight players you looked up, saved on this device only.
 - **Optional Steam Web API key** (Settings, top right) for exact
   `steamcommunity.com/id/…` vanity resolution. Stored only in your browser's
@@ -80,8 +87,10 @@ src/main.js                    hash router + home view + recents
 src/search.js                  input parsing + resolution pipeline
 src/searchBox.js               live-suggestion search box (landing + top bar)
 src/playerView.js              profile rendering (skeletons, retries per section)
+src/heroesView.js              per-player heroes page (filters, sorting, search)
 src/settings.js                optional Steam Web API key storage
 src/lib/api.js                 fetch layer (timeout, retry, cache)
+src/lib/aggregate.js           match-history rows → per-hero records (shared source)
 src/lib/util.js                tiny DOM helpers
 src/lib/dictionaries/          the translation layer (see above)
 data/baked/*.json              committed dictionary fallbacks

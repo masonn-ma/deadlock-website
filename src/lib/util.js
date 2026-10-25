@@ -103,3 +103,61 @@ export function avatarImg(srcs, className, initial, alt = '') {
   img.src = list[0];
   return img;
 }
+
+/**
+ * A hero's 24px icon: the translated hero object supplies the image URL,
+ * with a flat colour placeholder when the icon is missing or fails to load.
+ * @param {{ icon?: string, color?: string }} hero - translated hero entry
+ */
+export function heroIcon(hero, className = 'hero-icon') {
+  if (hero?.icon) {
+    return h('img', {
+      class: className,
+      src: hero.icon,
+      alt: '',
+      width: '24',
+      height: '24',
+      loading: 'lazy',
+      onError: (e) =>
+        e.target.replaceWith(h('span', { class: `${className} hero-icon-ph`, style: `background:${hero.color}` })),
+    });
+  }
+  return h('span', { class: `${className} hero-icon-ph`, style: `background:${hero?.color}` });
+}
+
+/** A small chip button that copies text and flashes feedback. */
+export function copyChip(text, label) {
+  return h('button', { class: 'chip-btn', type: 'button', onClick: copyChipClick(text) }, label);
+}
+
+/** Click handler factory behind copyChip: flash 'Copied' / 'Copy failed'. */
+export function copyChipClick(text) {
+  return async (event) => {
+    const btn = event.currentTarget;
+    const ok = await copyText(text);
+    const original = btn.textContent;
+    btn.textContent = ok ? 'Copied' : 'Copy failed';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1400);
+  };
+}
+
+/** The ↗ external-link glyph as an inline SVG icon. */
+export function iconExternal() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.5');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M6.5 3.5h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3M9.5 2.5h4v4M13 3 7.5 8.5');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(path);
+  return svg;
+}

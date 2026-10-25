@@ -3,20 +3,20 @@
  * and the recent match history table. All raw API integers pass through the
  * dictionary registry before they ever reach the DOM.
  *
- * Sections render independently as their data lands; each has its own
- * loading skeleton, error state and retry, so one slow or failed endpoint
- * never blocks or blanks the rest of the page.
+ * Hero data has a single source of truth: the full match history, aggregated
+ * client-side (lib/aggregate.js) into per-hero records. The same aggregation
+ * feeds the profile panel, the career KPIs and the dedicated heroes page,
+ * so numbers always agree between pages.
  */
 
-import { getSteamAccounts, getPlayerRank, getHeroStats, getMatchHistory, ApiError } from './lib/api.js';
+import { getSteamAccounts, getPlayerRank, getMatchHistory, ApiError } from './lib/api.js';
+import { aggregateHistory } from './lib/aggregate.js';
 import { translate } from './lib/dictionaries/registry.js';
 import { outcomeEntry } from './lib/dictionaries/modes.js';
 import * as fmt from './lib/dictionaries/format.js';
-import { h, avatarImg } from './lib/util.js';
+import { h, avatarImg, copyChip, copyChipClick, heroIcon, iconExternal } from './lib/util.js';
 import { steamId3FromAccount, fetchProfile } from './search.js';
 
-const TRACKLOCK_MATCH = 'https://tracklock.gg/match/';
-const TRACKLOCK_PROFILE = 'https://tracklock.gg/profile/';
 const INITIAL_MATCH_ROWS = 10;
 const EXPANDED_MATCH_ROWS = 40;
 
@@ -33,11 +33,11 @@ export function renderPlayer(root, accountId, ctx) {
   const stale = () => token !== renderToken;
 
   const state = {
+    accountId,
     profile: null,
     rank: null,
-    heroes: null,
+    agg: null,
     history: null,
-    showAllHeroes: false,
     matchCount: INITIAL_MATCH_ROWS,
   };
 
@@ -82,22 +82,6 @@ export function renderPlayer(root, accountId, ctx) {
     });
   };
 
-  const loadHeroes = () => {
-    return getHeroStats(accountId)
-      .then(async (data) => {
-        if (stale()) return;
-        await ctx.dictsReady;
-        if (stale()) return;
-        state.heroes = data;
-        renderHeroes(heroEl, heroFoot, state);
-        renderKpis(kpiEl);
-      })
-      .catch((err) => {
-        if (stale()) return;
-        sectionError(heroEl, heroFoot.parentElement, err, 'hero records', loadHeroes);
-      });
-  };
-
   const loadHistory = () => {
     return getMatchHistory(accountId)
       .then(async (data) => {
@@ -105,17 +89,20 @@ export function renderPlayer(root, accountId, ctx) {
         await ctx.dictsReady;
         if (stale()) return;
         state.history = data;
+        state.agg = aggregateHistory(data);
+        renderHeroes(heroEl, heroFoot, state);
         renderMatches(matchEl, matchFoot, matchDesc, state);
+        renderKpis(kpiEl);
       })
       .catch((err) => {
         if (stale()) return;
+        sectionError(heroEl, heroFoot.parentElement, err, 'hero records', loadHistory);
         sectionError(matchEl, matchFoot.parentElement, err, 'match history', loadHistory);
       });
   };
 
   loadHead();
   headReloader = loadHead;
-  loadHeroes();
   loadHistory();
 
   return () => { renderToken++; headReloader = null; };
@@ -258,8 +245,6 @@ function renderHead(el, profile) {
       h('p', { class: 'player-meta' },
         meta.length ? `${meta.join(' · ')} · ` : '',
         h('a', { class: 'text-link', href: profile.profileurl || '#', target: '_blank', rel: 'noopener' }, 'Steam ↗'),
-        ' · ',
-        h('a', { class: 'text-link', href: `${TRACKLOCK_PROFILE}${profile.account_id}`, target: '_blank', rel: 'noopener' }, 'Tracklock ↗'),
       ),
       h('p', { class: 'player-idline' },
         h('span', { class: 'mono id-chip' }, steamId3FromAccount(profile.account_id)),
@@ -281,17 +266,10 @@ function renderHead(el, profile) {
 
 function renderKpis(kpiEl) {
   if (!kpiEl) return;
-  const { profile, rank, heroes: heroStats } = current(kpiEl);
+  const { profile, rank, agg } = current(kpiEl);
 
-  let wins = 0;
-  let matches = 0;
-  if (heroStats) {
-    for (const row of heroStats) {
-      wins += row.wins ?? 0;
-      matches += row.matches_played ?? 0;
-    }
-  }
-  const winrate = matches > 0 ? (wins / matches) * 100 : null;
+  // Career win rate from the same aggregation as the hero panels.
+  const winrate = agg && agg.totalGames > 0 ? (agg.totalWins / agg.totalGames) * 100 : null;
 
   const rankEntry = rank
     ? translate('ranks', rank.badge ?? { tier: rank.rank, subrank: rank.subrank })
@@ -311,11 +289,11 @@ function renderKpis(kpiEl) {
         )
       : h('span', { class: 'muted' }, '\u2014')),
     kpiCell('Matches · 30 days', h('span', { class: 'num kpi-num' }, profile ? fmt.int(profile.matches_played_last_30d ?? 0) : '\u2014')),
-    kpiCell('Win rate', heroStats
+    kpiCell('Win rate', agg
       ? h('span', { class: 'num kpi-num' }, winrate == null ? '\u2014' : fmt.pct(winrate))
       : h('span', { class: 'skel', style: 'width:45%;height:24px;display:inline-block' })),
-    kpiCell('Heroes played', heroStats
-      ? h('span', { class: 'num kpi-num' }, String(heroStats.length))
+    kpiCell('Heroes played', agg
+      ? h('span', { class: 'num kpi-num' }, String(agg.heroCount))
       : h('span', { class: 'skel', style: 'width:45%;height:24px;display:inline-block' })),
   );
 }
@@ -357,86 +335,58 @@ function loadHeadRef() {
 
 function renderHeroes(listEl, footEl, state) {
   if (!listEl) return;
-  const stats = state.heroes;
+  const agg = state.agg;
 
-  if (!Array.isArray(stats) || stats.length === 0) {
+  if (!agg || agg.perHero.length === 0) {
     listEl.replaceChildren(emptyState('No ranked or unranked matches recorded for this account yet.'));
     if (footEl) footEl.replaceChildren();
     return;
   }
 
-  const sorted = [...stats].sort(
+  const sorted = [...agg.perHero].sort(
     (a, b) => (b.matches_played ?? 0) - (a.matches_played ?? 0) || (b.wins ?? 0) - (a.wins ?? 0)
   );
 
-  const renderList = () => {
-    const shown = state.showAllHeroes ? sorted : sorted.slice(0, 10);
-    const maxWinrate = Math.max(...shown.map((r) => winrateOf(r)), 1);
-
-    listEl.replaceChildren(
-      ...shown.map((row) => {
-        const hero = translate('heroes', row.hero_id);
-        const wr = winrateOf(row);
-        return h('li', {
-          class: 'hero-row',
-          title: `${fmt.int(row.wins)} W · ${fmt.int((row.matches_played ?? 0) - (row.wins ?? 0))} L`,
-        },
-          h('div', { class: 'hero-row-top' },
-            heroIcon(hero, 'hero-icon'),
-            h('span', { class: 'hero-name' }, hero.name),
-            h('span', { class: 'num hero-games' },
-              fmt.int(row.matches_played), ' ',
-              h('span', { class: 'unit' }, 'games'),
-            ),
+  listEl.replaceChildren(
+    ...sorted.slice(0, 10).map((row) => {
+      const hero = translate('heroes', row.heroId);
+      const wr = winrateOf(row);
+      return h('li', {
+        class: 'hero-row',
+        title: `${fmt.int(row.wins)} W · ${fmt.int(row.losses)} L`,
+      },
+        h('div', { class: 'hero-row-top' },
+          heroIcon(hero, 'hero-icon'),
+          h('span', { class: 'hero-name' }, hero.name),
+          h('span', { class: 'num hero-games' },
+            fmt.int(row.matches_played), ' ',
+            h('span', { class: 'unit' }, 'games'),
           ),
-          h('div', { class: 'hero-row-bar' },
-            h('span', { class: 'hero-bar-track' },
-              h('span', { class: 'hero-bar', style: `width:${((wr ?? 0) / maxWinrate) * 100}%` }),
-            ),
-            h('span', { class: 'num hero-bar-val' }, wr == null ? '\u2014' : fmt.pct(wr)),
+        ),
+        h('div', { class: 'hero-row-bar' },
+          h('span', { class: 'hero-bar-track' },
+            // Absolute scale: bar length = win rate, comparable across rows.
+            h('span', { class: 'hero-bar', style: `width:${wr ?? 0}%` }),
           ),
-        );
-      })
-    );
-
-    if (footEl) {
-      footEl.replaceChildren(
-        sorted.length > 10
-          ? h('button', {
-              class: 'btn ghost full',
-              type: 'button',
-              onClick: () => {
-                state.showAllHeroes = !state.showAllHeroes;
-                renderList();
-              },
-            }, state.showAllHeroes ? 'Show top 10' : `Show all ${sorted.length}`)
-          : h('p', { class: 'panel-note' }, `All ${sorted.length} heroes played.`)
+          h('span', { class: 'num hero-bar-val' }, wr == null ? '\u2014' : fmt.pct(wr)),
+        ),
       );
-    }
-  };
-  renderList();
+    })
+  );
+
+  if (footEl) {
+    footEl.replaceChildren(
+      sorted.length > 10
+        ? h('a', { class: 'btn ghost full', href: `#/heroes/${state.accountId}` }, `All ${sorted.length} heroes`)
+        : h('p', { class: 'panel-note' }, `All ${sorted.length} heroes played.`)
+    );
+  }
 }
 
 function winrateOf(row) {
   const played = row.matches_played ?? 0;
   if (!played) return null;
   return ((row.wins ?? 0) / played) * 100;
-}
-
-function heroIcon(hero, className) {
-  if (hero.icon) {
-    return h('img', {
-      class: className,
-      src: hero.icon,
-      alt: '',
-      width: '24',
-      height: '24',
-      loading: 'lazy',
-      onError: (e) =>
-        e.target.replaceWith(h('span', { class: `${className} hero-icon-ph`, style: `background:${hero.color}` })),
-    });
-  }
-  return h('span', { class: `${className} hero-icon-ph`, style: `background:${hero.color}` });
 }
 
 /* ------------------------------------------------------------------ */
@@ -466,13 +416,7 @@ function renderMatches(listEl, footEl, descEl, state) {
         const outcome = outcomeEntry(m.player_match_outcome);
         const delta = m.ranked_delta;
         return h('li', { class: 'mrow' },
-          h('a', {
-            class: 'm-hero',
-            href: `${TRACKLOCK_MATCH}${m.match_id}`,
-            target: '_blank',
-            rel: 'noopener',
-            title: `Open match ${fmt.int(m.match_id)} on Tracklock`,
-          },
+          h('div', { class: 'm-hero', title: `Match ${fmt.int(m.match_id)}` },
             heroIcon(hero, 'hero-icon sm'),
             h('span', { class: 'm-hero-name' }, hero.name),
           ),
@@ -507,15 +451,7 @@ function renderMatches(listEl, footEl, descEl, state) {
         );
       } else {
         footEl.replaceChildren(
-          h('p', { class: 'panel-note' },
-            `Showing ${Math.min(state.matchCount, total)} of ${fmt.int(total)} · `,
-            h('a', {
-              class: 'text-link',
-              href: `${TRACKLOCK_PROFILE}${sorted[0]?.account_id ?? ''}`,
-              target: '_blank',
-              rel: 'noopener',
-            }, 'Full history on Tracklock ↗'),
-          )
+          h('p', { class: 'panel-note' }, `Showing ${Math.min(state.matchCount, total)} of ${fmt.int(total)} matches`)
         );
       }
     }
@@ -556,43 +492,4 @@ function sectionError(listEl, panelEl, err, label, retryFn) {
 function errMessage(err) {
   if (err instanceof ApiError) return err.message;
   return err?.message || 'network error';
-}
-
-function copyChip(text, label) {
-  return h('button', { class: 'chip-btn', type: 'button', onClick: copyChipClick(text) }, label);
-}
-
-function copyChipClick(text) {
-  return async (event) => {
-    const btn = event.currentTarget;
-    let ok = true;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      ok = false;
-    }
-    const original = btn.textContent;
-    btn.textContent = ok ? 'Copied' : 'Copy failed';
-    btn.disabled = true;
-    setTimeout(() => {
-      btn.textContent = original;
-      btn.disabled = false;
-    }, 1400);
-  };
-}
-
-function iconExternal() {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 16 16');
-  svg.setAttribute('width', '15');
-  svg.setAttribute('height', '15');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.5');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', 'M6.5 3.5h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3M9.5 2.5h4v4M13 3 7.5 8.5');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('stroke-linejoin', 'round');
-  svg.appendChild(path);
-  return svg;
 }

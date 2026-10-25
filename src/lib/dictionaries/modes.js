@@ -71,6 +71,23 @@ export const gameMode = makeDict(GAME_MODE, 'Game mode');
 export const matchMode = makeDict(MATCH_MODE, 'Match mode');
 export const outcome = makeDict(OUTCOME, 'Outcome');
 
+/**
+ * One human label per match row: non-normal game modes (Street Brawl,
+ * Sandbox, ...) carry their own name; otherwise it is the queue type
+ * (Unranked, Ranked, Private Lobby, ...). This collapses the two enums into
+ * the single dimension players actually think in when filtering.
+ */
+export function queueLabel(row) {
+  const gm = Number(row?.game_mode ?? 0);
+  if (gm !== 1) {
+    const entry = gameMode.lookup(gm);
+    return entry ? entry.name : gameMode.fallback(gm).name;
+  }
+  const mm = Number(row?.match_mode ?? 0);
+  const entry = matchMode.lookup(mm);
+  return entry ? entry.name : matchMode.fallback(mm).name;
+}
+
 /** Result of a match for one player, with its UI tone. */
 export function outcomeEntry(value) {
   if (value == null) return { name: '\u2014', tone: 'neutral', unknown: true };
