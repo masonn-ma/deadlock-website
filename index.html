@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soul Ledger · Deadlock player lookup</title>
+  <meta name="description" content="Look up any Deadlock player by Steam ID, profile URL or display name. Rank, hero records and match history, straight from the Deadlock Community API.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0b09'/%3E%3Cpath d='M16 4 28 16 16 28 4 16Z' fill='none' stroke='%23d9a441' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%23d9a441'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="wordmark" href="#/">
+        <svg class="wordmark-gem" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M8 1 15 8 8 15 1 8Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <circle cx="8" cy="8" r="1.8" fill="currentColor"/>
+        </svg>
+        Soul Ledger
+      </a>
+      <form class="topbar-search" id="topbar-search" role="search" autocomplete="off" hidden>
+        <svg class="search-glyph" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input class="topbar-input" type="text" placeholder="Search another player…" spellcheck="false" aria-label="Search another player">
+        <ul class="search-pop pop-up" hidden></ul>
+      </form>
+      <div class="topbar-actions">
+        <a class="topbar-link" href="https://github.com/masonn-ma/deadlock-website" target="_blank" rel="noopener">GitHub</a>
+        <button class="icon-btn" id="settings-btn" type="button" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M8 1.8v1.6M8 12.6v1.6M2.4 8h1.6M12 8h1.6M4 4l1.1 1.1M10.9 10.9 12 12M12 4l-1.1 1.1M5.1 10.9 4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="canvas" id="view"></main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="footer-note">
+        Data from the <a class="text-link" href="https://deadlock-api.com" target="_blank" rel="noopener">Deadlock Community API</a>
+        · Personal tool · Not affiliated with Valve
+      </span>
+    </div>
+  </footer>
+
+  <dialog class="settings" id="settings-dialog" aria-labelledby="settings-title">
+    <form method="dialog" id="settings-form">
+      <h2 class="settings-title" id="settings-title">Settings</h2>
+      <label class="field-label" for="steam-key-input">Steam Web API key (optional)</label>
+      <input class="settings-input" id="steam-key-input" type="password" placeholder="Steam Web API key" spellcheck="false" autocomplete="off">
+      <p class="settings-help">
+        Only needed to resolve <span class="mono">steamcommunity.com/id/&hellip;</span> URLs exactly.
+        Get a free key at <a class="text-link" href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener">steamcommunity.com/dev/apikey</a>.
+        It is stored only in this browser&rsquo;s localStorage and is sent nowhere but Steam.
+      </p>
+      <p class="settings-status" id="steam-key-status" role="status"></p>
+      <div class="settings-actions">
+        <button class="btn text" type="button" id="steam-key-clear">Remove key</button>
+        <button class="btn text" type="button" id="settings-cancel">Cancel</button>
+        <button class="btn primary" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
