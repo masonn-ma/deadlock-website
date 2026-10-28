@@ -888,7 +888,7 @@ img { display: block; }
 
 .mrow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px 78px 64px 56px 56px 62px;
+  grid-template-columns: minmax(0, 1fr) 56px 78px 64px 56px 56px 62px 16px;
   align-items: center;
   column-gap: 12px;
   min-height: 53px;
@@ -912,6 +912,10 @@ img { display: block; }
 }
 
 .mlist .mrow:last-child { border-bottom: none; }
+
+/* an open row must keep its content height: basis 0 + shrink would squeeze it
+   down to the 53px row minimum and paint the panel over the rows below */
+.mlist .mrow.expanded { flex: 1 0 auto; }
 
 .m-hero {
   display: flex;
@@ -948,6 +952,107 @@ img { display: block; }
 .m-pts.muted, .m-kda.muted { color: var(--muted); }
 
 .m-when { color: var(--faint); font-size: 12px; }
+
+/* ---------- match expansion (click a row for details) ---------- */
+
+.mrow[role='button'] { cursor: pointer; }
+
+/* hover feedback only on closed rows - an open row reads as one surface */
+.mrow[role='button']:hover:not(.expanded),
+.mrow[role='button']:focus-visible:not(.expanded) { background: var(--raised); }
+
+.mrow[role='button']:focus-visible { outline: 1px solid var(--control); outline-offset: -1px; }
+
+.m-chev {
+  justify-self: end;
+  display: flex;
+  color: var(--faint);
+}
+
+.m-chev svg { display: block; }
+
+.m-expand {
+  grid-column: 1 / -1;
+  background: var(--raised);
+  border-radius: 8px;
+  padding: 14px 16px 16px;
+  margin: 2px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.m-x-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.m-x-hero { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.m-x-hero-name { font-size: 14px; font-weight: 600; }
+.m-x-level { font-size: 12px; color: var(--muted); }
+
+.m-x-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.m-x-date { font-size: 12.5px; color: var(--muted); }
+
+.m-x-id { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--faint); }
+
+.m-x-stats { display: flex; flex-wrap: wrap; gap: 10px 36px; }
+
+.m-x-stat { display: flex; flex-direction: column; gap: 3px; }
+.m-x-stat-label { font-size: 11px; color: var(--faint); }
+.m-x-stat-value { font-size: 15px; color: var(--text); }
+
+.m-x-flags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.m-x-roster { min-width: 0; }
+
+.m-x-roster-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.m-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+
+.m-team { display: flex; flex-direction: column; min-width: 0; }
+
+.m-team-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 6px; }
+
+.m-team-name {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.m-team-outcome { font-size: 11.5px; font-weight: 500; }
+.m-team-outcome.win { color: var(--positive); }
+.m-team-outcome.loss { color: var(--negative); }
+
+/* roster row: hero + names | K/D/A | souls | level */
+.m-r-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px 62px 26px;
+  column-gap: 10px;
+  align-items: center;
+  min-height: 34px;
+}
+
+.m-r-row + .m-r-row { border-top: 1px solid var(--rule); }
+
+.m-r-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.m-r-names { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.m-r-hero { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-r-player { font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the queried player: the one gold data highlight in the roster */
+.m-r-row.you { background: #d9a4410d; }
+.m-r-row.you .m-r-hero { color: var(--accent); }
+
+.m-r-kda, .m-r-nw { text-align: right; font-size: 12px; color: var(--text); white-space: nowrap; }
+.m-r-lv { text-align: right; font-size: 12px; color: var(--muted); }
 
 /* ---------- status pills ---------- */
 
@@ -1124,6 +1229,14 @@ dialog.settings::backdrop { background: rgba(8, 6, 4, 0.6); }
   .m-detail > span { justify-self: auto; text-align: left; font-size: 12px; }
   .m-when { margin-left: auto; }
 
+  /* expansion panel rides below the wrapped row, full width; the chevron
+     docks beside the hero/result line instead of wrapping onto its own line */
+  .mrow[role='button'] { position: relative; }
+  .m-chev { position: absolute; top: 16px; right: 0; margin-left: 0; }
+  .m-expand { flex: 0 0 100%; margin: 4px 0 10px; padding: 12px 2px 14px; }
+  .m-x-meta { margin-left: 0; }
+  .m-teams { grid-template-columns: 1fr; }
+
   /* heroes page rows reflow to stacked lines; labels row drops out
      (element carries both classes, so the hide needs the pair) */
   .hp-row.hp-hhead { display: none; }
@@ -1170,8 +1283,11 @@ dialog.settings::backdrop { background: rgba(8, 6, 4, 0.6); }
   .text-link,
   .topbar-link,
   .m-hero-name,
+  .mrow[role='button'],
   .search-input,
   .topbar-input {
     transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
   }
+
+  .m-chev svg { transition: transform 160ms ease; }
 }

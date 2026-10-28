@@ -91,3 +91,18 @@ export function hours(seconds) {
   if (seconds == null) return '\u2014';
   return `${(seconds / 3600).toFixed(1)} h`;
 }
+
+/** "Oct 19, 2026, 19:04" - full local timestamp for the match detail card. */
+export function dateTime(unixSeconds) {
+  if (!unixSeconds) return '\u2014';
+  const d = new Date(unixSeconds * 1000);
+  const day = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hourCycle: 'h23' });
+  return `${day}, ${time}`;
+}
+
+/** 731 - souls earned per minute across a match; null-safe. */
+export function perMin(total, seconds) {
+  if (total == null || !seconds) return '\u2014';
+  return int(Math.round(total / (seconds / 60)));
+}

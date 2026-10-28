@@ -25,6 +25,13 @@ free on **GitHub Pages**. Personal project - not affiliated with Valve.
   K/D/A and last-played times.
 - **Match history**: result pills, K/D/A, souls (net worth), duration and
   ranked rating delta.
+- **Match detail**: click any match row to expand it in place - hero level,
+  queue label, full local timestamp, souls/min, last hits, denies, Street
+  Brawl rounds, abandoned / low-priority / calibration flags, match ID with
+  copy, plus both team rosters (per-player hero, name, K/D/A, souls, level,
+  win/loss tags; the queried player is highlighted). Rosters come from the
+  match metadata endpoint, trimmed client-side and cached; very old matches
+  that no longer carry metadata show row stats with an inline note.
 - **Recents**: the last eight players you looked up, saved on this device only.
 - **Optional Steam Web API key** (Settings, top right) for exact
   `steamcommunity.com/id/…` vanity resolution. Stored only in your browser's
@@ -86,7 +93,7 @@ styles/main.css                the whole design system (obsidian & gold)
 src/main.js                    hash router + home view + recents
 src/search.js                  input parsing + resolution pipeline
 src/searchBox.js               live-suggestion search box (landing + top bar)
-src/playerView.js              profile rendering (skeletons, retries per section)
+src/playerView.js              profile rendering (skeletons, retries, expandable match rows)
 src/heroesView.js              per-player heroes page (filters, sorting, search)
 src/settings.js                optional Steam Web API key storage
 src/lib/api.js                 fetch layer (timeout, retry, cache)

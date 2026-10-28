@@ -87,7 +87,9 @@ async function fetchJsonOnce(url, timeout, signalContext) {
  * GET a Deadlock API endpoint, with cache, timeout and one retry.
  * @param {string} path - path after `/v1`, e.g. `/players/steam`
  * @param {Record<string, string|number|boolean|null>} [params]
- * @param {{ttl?: number, timeout?: number, retries?: number}} [opts]
+ * @param {{ttl?: number, timeout?: number, retries?: number, slim?: (data: any) => any}} [opts]
+ *   `slim` trims the payload before it reaches the cache - use for oversized
+ *   responses so sessionStorage never swallows megabytes of dead weight.
  */
 export async function api(path, params = {}, opts = {}) {
   const { ttl = DEFAULT_TTL, timeout = DEFAULT_TIMEOUT, retries = 1 } = opts;
@@ -105,8 +107,9 @@ export async function api(path, params = {}, opts = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const data = await fetchJsonOnce(url, timeout, opts.abortContext);
-      writeCache(url, data);
-      return data;
+      const kept = opts.slim ? opts.slim(data) : data;
+      writeCache(url, kept);
+      return kept;
     } catch (err) {
       lastError = err;
       // Aborted by the caller (user navigated away) - don't retry.
@@ -157,6 +160,43 @@ export function getHeroStats(accountId) {
 
 export function getMatchHistory(accountId) {
   return api(`/players/${accountId}/match-history`);
+}
+
+/**
+ * Match detail via the metadata endpoint - both team rosters with per-player
+ * hero, K/D/A, souls and level. The raw payload is ~1MB per match (per-player
+ * stat timelines, item builds), so it is trimmed to roster fields before it is
+ * cached. A finished match never changes, so a long TTL is safe.
+ */
+export function getMatchMetadata(matchId) {
+  return api(`/matches/${matchId}/metadata`, {}, { ttl: 24 * 60 * 60 * 1000, slim: slimMatchMetadata });
+}
+
+/** Keep only the roster fields the match-detail card renders. */
+function slimMatchMetadata(raw) {
+  const info = raw?.match_info ?? {};
+  return {
+    match_id: info.match_id,
+    start_time: info.start_time,
+    duration_s: info.duration_s,
+    winning_team: info.winning_team,
+    game_mode: info.game_mode,
+    match_mode: info.match_mode,
+    players: (info.players ?? []).map((p) => ({
+      account_id: p.account_id,
+      player_slot: p.player_slot,
+      team: p.team,
+      hero_id: p.hero_id,
+      kills: p.kills,
+      deaths: p.deaths,
+      assists: p.assists,
+      net_worth: p.net_worth,
+      level: p.level,
+      last_hits: p.last_hits,
+      denies: p.denies,
+      abandon_match_time_s: p.abandon_match_time_s,
+    })),
+  };
 }
 
 /** Dictionary sources (used by the dictionaries modules with a 24h cache). */
