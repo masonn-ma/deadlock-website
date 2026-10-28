@@ -568,7 +568,7 @@ function matchExpand(m, state) {
   );
 }
 
-/** Layer 2: both team rosters, with skeletons while the fetch is in flight. */
+/** Layer 2: calculated numbers, net-worth curve and both team rosters. */
 function matchRoster(m, state) {
   const entry = state.matchDetails.get(m.match_id);
 
@@ -590,7 +590,83 @@ function matchRoster(m, state) {
   const data = entry.data;
   const byId = new Map((entry.names ?? []).map((n) => [n.account_id, n.personaname]));
   const mine = m.player_team ?? data.players[0]?.team ?? 0;
+  const me = data.players.find((p) => Number(p.account_id) === Number(state.accountId));
 
+  return h('div', { class: 'm-x-roster-inner' },
+    me ? matchNumbers(me, data) : null,
+    me ? soulsSpark(me.stats) : null,
+    matchTeams(mine, data, byId, state),
+  );
+}
+
+/**
+ * Calculated match numbers for the queried player: match-relative context
+ * (souls rank, kill participation) plus raw combat totals from the final
+ * stats snapshot.
+ */
+function matchNumbers(me, data) {
+  const st = me.stats ?? {};
+  const k = me.kills;
+  const d = me.deaths;
+  const a = me.assists;
+
+  const byNw = [...data.players].sort((x, y) => (y.net_worth ?? 0) - (x.net_worth ?? 0));
+  const rank = byNw.findIndex((p) => Number(p.account_id) === Number(me.account_id)) + 1;
+  const nPlayers = data.players.length;
+
+  const teamKills = data.players
+    .filter((p) => p.team === me.team)
+    .reduce((sum, p) => sum + (p.kills ?? 0), 0);
+  const kp = teamKills ? ((k + a) / teamKills) * 100 : null;
+
+  const shots = (st.shots_hit ?? 0) + (st.shots_missed ?? 0);
+  const accuracy = shots ? ((st.shots_hit ?? 0) / shots) * 100 : null;
+
+  const cells = [
+    ['Souls rank', rank ? `#${rank} / ${nPlayers}` : null],
+    ['Kill participation', fmt.pct(kp)],
+    ['KDA ratio', fmt.kdaRatio(k, d, a)],
+    ['Hero damage', fmt.int(st.hero_damage)],
+    ['Damage taken', fmt.int(st.damage_taken)],
+    ['Healing', fmt.int(st.healing)],
+    ['Accuracy', fmt.pct(accuracy)],
+  ];
+  return h('div', { class: 'm-x-stats' },
+    cells.map(([label, value]) =>
+      h('span', { class: 'm-x-stat' },
+        h('span', { class: 'm-x-stat-label' }, label),
+        h('span', { class: 'num m-x-stat-value' }, value ?? '\u2014'),
+      )
+    ),
+  );
+}
+
+/** Gold sparkline of the queried player's net worth over match time. */
+function soulsSpark(st) {
+  const pts = st?.timeline;
+  if (!pts || pts.length < 2) return null;
+  const W = 620;
+  const H = 46;
+  const pad = 3;
+  const span = pts[pts.length - 1][0] - pts[0][0] || 1;
+  const maxN = Math.max(...pts.map((p) => p[1] ?? 0)) || 1;
+  const xy = pts.map(([t, n]) => [
+    pad + ((t - pts[0][0]) / span) * (W - pad * 2),
+    H - pad - ((n ?? 0) / maxN) * (H - pad * 2),
+  ]);
+  const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const el = document.createElement('span');
+  el.className = 'm-x-spark';
+  el.title = 'Net worth over match time';
+  el.innerHTML =
+    '<span class="m-x-stat-label">Souls</span>'
+    + `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">`
+    + `<polygon class="m-x-spark-area" points="${pad},${H - pad} ${line} ${W - pad},${H - pad}"/>`
+    + `<polyline class="m-x-spark-line" points="${line}"/></svg>`;
+  return el;
+}
+
+function matchTeams(mine, data, byId, state) {
   const rosterRows = (side) => data.players
     .filter((p) => p.team === side)
     .sort((a, b) => (b.net_worth ?? 0) - (a.net_worth ?? 0))
@@ -615,10 +691,14 @@ function matchRoster(m, state) {
 
   const teamCol = (side, label) => {
     const won = side === data.winning_team;
+    const souls = data.players
+      .filter((p) => p.team === side)
+      .reduce((sum, p) => sum + (p.net_worth ?? 0), 0);
     return h('div', { class: 'm-team' },
       h('div', { class: 'm-team-head' },
         h('span', { class: 'm-team-name' }, label),
         h('span', { class: `m-team-outcome ${won ? 'win' : 'loss'}` }, won ? 'Win' : 'Loss'),
+        h('span', { class: 'num m-team-souls', title: 'Combined souls' }, fmt.compact(souls)),
       ),
       rosterRows(side),
     );

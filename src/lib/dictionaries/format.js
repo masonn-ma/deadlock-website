@@ -106,3 +106,9 @@ export function perMin(total, seconds) {
   if (total == null || !seconds) return '\u2014';
   return int(Math.round(total / (seconds / 60)));
 }
+
+/** 2.75 - KDA ratio (kills + assists) / deaths; deaths floored at 1. */
+export function kdaRatio(kills, deaths, assists) {
+  if (kills == null || deaths == null || assists == null) return '\u2014';
+  return ((kills + assists) / Math.max(1, deaths)).toFixed(2);
+}

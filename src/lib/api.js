@@ -195,7 +195,23 @@ function slimMatchMetadata(raw) {
       last_hits: p.last_hits,
       denies: p.denies,
       abandon_match_time_s: p.abandon_match_time_s,
+      stats: slimPlayerStats(p.stats),
     })),
+  };
+}
+
+/** Final stats snapshot + net-worth timeline for the calculated numbers. */
+function slimPlayerStats(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+  const last = entries[entries.length - 1];
+  return {
+    // cumulative [match time, net worth] pairs - feeds the sparkline
+    timeline: entries.map((s) => [s.time_stamp_s, s.net_worth]),
+    hero_damage: last.player_damage,
+    damage_taken: last.player_damage_taken,
+    healing: last.player_healing,
+    shots_hit: last.shots_hit,
+    shots_missed: last.shots_missed,
   };
 }
 

@@ -1003,6 +1003,14 @@ img { display: block; }
 
 .m-x-roster { min-width: 0; }
 
+.m-x-roster-inner { display: flex; flex-direction: column; gap: 14px; }
+
+/* net-worth sparkline: gold line over a whisper of fill */
+.m-x-spark { display: flex; flex-direction: column; gap: 4px; }
+.m-x-spark svg { display: block; width: 100%; height: 44px; }
+.m-x-spark-line { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.m-x-spark-area { fill: rgba(217, 164, 65, 0.08); }
+
 .m-x-roster-error {
   display: flex;
   align-items: center;
@@ -1029,6 +1037,8 @@ img { display: block; }
 .m-team-outcome { font-size: 11.5px; font-weight: 500; }
 .m-team-outcome.win { color: var(--positive); }
 .m-team-outcome.loss { color: var(--negative); }
+
+.m-team-souls { margin-left: auto; font-size: 11.5px; color: var(--faint); }
 
 /* roster row: hero + names | K/D/A | souls | level */
 .m-r-row {

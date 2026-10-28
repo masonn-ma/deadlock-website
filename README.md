@@ -29,9 +29,11 @@ free on **GitHub Pages**. Personal project - not affiliated with Valve.
   queue label, full local timestamp, souls/min, last hits, denies, Street
   Brawl rounds, abandoned / low-priority / calibration flags, match ID with
   copy, plus both team rosters (per-player hero, name, K/D/A, souls, level,
-  win/loss tags; the queried player is highlighted). Rosters come from the
-  match metadata endpoint, trimmed client-side and cached; very old matches
-  that no longer carry metadata show row stats with an inline note.
+  win/loss tags, combined souls; the queried player is highlighted) and
+  calculated numbers: souls rank, kill participation, KDA ratio, shooting
+  accuracy, and a gold net-worth sparkline. Rosters come from the match
+  metadata endpoint, trimmed client-side and cached; very old matches that
+  no longer carry metadata show row stats with an inline note.
 - **Recents**: the last eight players you looked up, saved on this device only.
 - **Optional Steam Web API key** (Settings, top right) for exact
   `steamcommunity.com/id/…` vanity resolution. Stored only in your browser's
